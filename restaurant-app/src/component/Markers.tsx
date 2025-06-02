@@ -1,13 +1,14 @@
 import { StoreType } from "@/interface";
-import { useEffect } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect } from "react";
 interface MarkerProps {
-  map: any;
-  storeDatas: StoreType[];
+  map: unknown;
+  stores: StoreType[];
+  setCurrentStore: Dispatch<SetStateAction<any>>;
 }
-export default function Markers({ map, storeDatas }: MarkerProps) {
-  const loadKakaoMarkers = () => {
+export default function Markers({ map, stores, setCurrentStore }: MarkerProps) {
+  const loadKakaoMarkers = useCallback(() => {
     if (map) {
-      storeDatas?.map((store) => {
+      stores?.map((store) => {
         const imgSrc = store.bizcnd_code_nm
           ? `/images/markers/${store.bizcnd_code_nm}.png`
           : `/images/markers/default.png`;
@@ -41,10 +42,13 @@ export default function Markers({ map, storeDatas }: MarkerProps) {
         window.kakao.maps.event.addListener(marker, "mouseout", function () {
           customOverlay.setMap(null);
         });
+        window.kakao.maps.event.addListener(marker, "click", function () {
+          setCurrentStore(store);
+        });
         marker.setMap(map);
       });
     }
-  };
+  }, [map, setCurrentStore, stores]);
   useEffect(() => {
     loadKakaoMarkers();
   }, [map]);
