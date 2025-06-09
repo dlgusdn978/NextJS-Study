@@ -9,8 +9,8 @@ export default function Markers({ map, stores, setCurrentStore }: MarkerProps) {
   const loadKakaoMarkers = useCallback(() => {
     if (map) {
       stores?.map((store) => {
-        const imgSrc = store.bizcnd_code_nm
-          ? `/images/markers/${store.bizcnd_code_nm}.png`
+        const imgSrc = store.category
+          ? `/images/markers/${store.category}.png`
           : `/images/markers/default.png`;
         const imgSize = new window.kakao.maps.Size(40, 40);
         const imgOption = { offset: new window.kakao.maps.Point(27, 69) };
@@ -21,14 +21,14 @@ export default function Markers({ map, stores, setCurrentStore }: MarkerProps) {
           imgOption
         );
         const markerPosition = new window.kakao.maps.LatLng(
-          store?.y_dnts,
-          store?.x_cnts
+          store?.lat,
+          store?.lng
         );
         const marker = new window.kakao.maps.Marker({
           position: markerPosition,
           image: markerImage,
         });
-        const content = `<div class="infowindow">${store?.upso_nm}</div>`;
+        const content = `<div class="infowindow">${store?.name}</div>`;
         const customOverlay = new window.kakao.maps.CustomOverlay({
           position: markerPosition,
           content: content,
