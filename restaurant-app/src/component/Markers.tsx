@@ -6,6 +6,7 @@ interface MarkerProps {
   setCurrentStore: Dispatch<SetStateAction<any>>;
 }
 export default function Markers({ map, stores, setCurrentStore }: MarkerProps) {
+  console.log(stores);
   const loadKakaoMarkers = useCallback(() => {
     if (map) {
       stores?.map((store) => {

@@ -1,25 +1,63 @@
-import { StoreApiResponse } from "@/interface";
+import React, { useRef, useEffect, useCallback } from "react";
+import { StoreType } from "@/interface";
 import Image from "next/image";
 import axios from "axios";
-import { useQuery } from "react-query";
+import { useInfiniteQuery } from "react-query";
 import Loading from "@/component/Loading";
-import Link from "next/link";
 
 import { useRouter } from "next/router";
-import Pagination from "@/component/Pagination";
+import useIntersectionObserver from "@/hooks/useIntersectionObserver";
+import Loader from "@/component/Loader";
+
 export default function StoreListPage() {
   const router = useRouter();
   const { page = "1" }: any = router.query;
+  const ref = useRef<HTMLDivElement | null>(null);
+  const pageRef = useIntersectionObserver(ref, {});
+  const isPageEnd = !!pageRef?.isIntersecting;
   console.log(page);
+  console.log(pageRef);
+
+  const fetchStores = async ({ pageParam = 1 }) => {
+    const { data } = await axios("/api/stores?page=" + pageParam, {
+      params: {
+        limit: 10,
+        page: pageParam,
+      },
+    });
+    return data;
+  };
+
   const {
-    isLoading,
-    isError,
     data: stores,
-  } = useQuery(`stores/${page}`, async () => {
-    const { data } = await axios(`/api/stores?page=${page}`);
-    return data as StoreApiResponse;
+    isFetching,
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage,
+    isError,
+    isLoading,
+  } = useInfiniteQuery("stores", fetchStores, {
+    getNextPageParam: (lastPage: any) =>
+      lastPage.data?.length > 0 ? lastPage.page + 1 : undefined,
   });
 
+  const fetchNext = useCallback(async () => {
+    const res = await fetchNextPage();
+    if (res.isError) {
+      console.log(res.error);
+    }
+  }, [fetchNextPage]);
+
+  useEffect(() => {
+    let timerId: NodeJS.Timeout | undefined;
+    if (isPageEnd && hasNextPage) {
+      timerId = setTimeout(() => {
+        fetchNext();
+      }, 500);
+    }
+    return () => clearTimeout(timerId);
+  }, [fetchNextPage, isPageEnd]);
+  console.log(stores);
   if (isError) {
     return (
       <div className="w-full h-screen mx-auto pt-[30%] text-red-500 text-center font-semibold">
@@ -34,47 +72,49 @@ export default function StoreListPage() {
         {isLoading ? (
           <Loading />
         ) : (
-          stores?.data.map((store, index) => (
-            <li className="flex justify-between gap-x-6 py-5" key={index}>
-              <div className="flex gap-x-4">
-                <Image
-                  src={
-                    store?.category
-                      ? `/image/markers/${store?.category}.png`
-                      : `/image/marker/default.png`
-                  }
-                  width={48}
-                  height={48}
-                  alt="아이콘 이미지"
-                />
+          stores?.pages?.map((page, index) => (
+            <React.Fragment key={index}>
+              {page.data.map((store: StoreType, i: number) => (
+                <li className="flex justify-between gap-x-6 py-5" key={i}>
+                  <div className="flex gap-x-4">
+                    <Image
+                      src={
+                        store?.category
+                          ? `/image/markers/${store?.category}.png`
+                          : `/image/marker/default.png`
+                      }
+                      width={48}
+                      height={48}
+                      alt="아이콘 이미지"
+                    />
 
-                <div>
-                  <div className="text-sm font-semibold leading-9 text-gray-900">
-                    {store?.name}
-                  </div>
+                    <div>
+                      <div className="text-sm font-semibold leading-9 text-gray-900">
+                        {store?.name}
+                      </div>
 
-                  <div className="mt-1 text-xs truncate font-semibold leading-9 text-gray-500">
-                    {store?.storeType}
+                      <div className="mt-1 text-xs truncate font-semibold leading-9 text-gray-500">
+                        {store?.storeType}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="hidden sm:flex sm:flex-col sm:items-end">
-                <div className="text-sm font-semibold leading-9 text-gray-900">
-                  {store?.address}
-                </div>
-                <div className="mt-1 text-xs truncate font-semibold leading-9 text-gray-500">
-                  {store?.phone} | {store?.foodCertifyName} | {store?.category}
-                </div>
-              </div>
-            </li>
+                  <div className="hidden sm:flex sm:flex-col sm:items-end">
+                    <div className="text-sm font-semibold leading-9 text-gray-900">
+                      {store?.address}
+                    </div>
+                    <div className="mt-1 text-xs truncate font-semibold leading-9 text-gray-500">
+                      {store?.phone} | {store?.foodCertifyName} |{" "}
+                      {store?.category}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </React.Fragment>
           ))
         )}
       </ul>
-      {stores?.totalPage && (
-        <Pagination total={stores?.totalPage} page={page} />
-      )}
-
-      <h1>Store List</h1>
+      {(isFetching || hasNextPage || isFetchingNextPage) && <Loader />}
+      <div className="w-full touch-none h-10 mb-10" ref={ref} />
     </div>
   );
 }
