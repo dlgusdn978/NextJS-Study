@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { StoreType } from "@/interface";
 import Image from "next/image";
 import axios from "axios";
@@ -8,6 +8,7 @@ import Loading from "@/component/Loading";
 import { useRouter } from "next/router";
 import useIntersectionObserver from "@/hooks/useIntersectionObserver";
 import Loader from "@/component/Loader";
+import SearchFilter from "@/component/SearchFilter";
 
 export default function StoreListPage() {
   const router = useRouter();
@@ -15,14 +16,19 @@ export default function StoreListPage() {
   const ref = useRef<HTMLDivElement | null>(null);
   const pageRef = useIntersectionObserver(ref, {});
   const isPageEnd = !!pageRef?.isIntersecting;
-  console.log(page);
-  console.log(pageRef);
+  const [q, setQ] = useState<string | null>(null);
+  const [district, setDistrict] = useState<string | null>(null);
 
+  const searchParams = {
+    q: q,
+    district: district,
+  };
   const fetchStores = async ({ pageParam = 1 }) => {
     const { data } = await axios("/api/stores?page=" + pageParam, {
       params: {
         limit: 10,
         page: pageParam,
+        ...searchParams,
       },
     });
     return data;
@@ -36,7 +42,7 @@ export default function StoreListPage() {
     hasNextPage,
     isError,
     isLoading,
-  } = useInfiniteQuery("stores", fetchStores, {
+  } = useInfiniteQuery(["stores", searchParams], fetchStores, {
     getNextPageParam: (lastPage: any) =>
       lastPage.data?.length > 0 ? lastPage.page + 1 : undefined,
   });
@@ -68,6 +74,7 @@ export default function StoreListPage() {
 
   return (
     <div className="px-4 md:max-w-4xl mx-auto py-8">
+      <SearchFilter setQ={setQ} setDistrict={setDistrict} />
       <ul role="list" className="divide-y divide-gray-100">
         {isLoading ? (
           <Loading />
